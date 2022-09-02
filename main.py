@@ -150,7 +150,7 @@ for dir, file_path in data_dict.items():
 
     df = pd.read_excel(file_path)
     real_text = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
-    file_list = os.listdir(dir)[:10]
+    file_list = os.listdir(dir)
     for file_name in tqdm(file_list):
 
         bare_file_name = re.split(', |_|\.|\+', file_name)[0]
@@ -180,4 +180,4 @@ for dir, file_path in data_dict.items():
         print(ocr_out)
         score = editdistance.eval(ocr_out, real_out) / \
             max([len(real_out), len(ocr_out)])
-        score_list.append(score)
+        scores.append(score)
