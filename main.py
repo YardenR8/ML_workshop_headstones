@@ -653,7 +653,7 @@ for dir, file_path in data_dict.items():
 
     df = pd.read_excel(file_path)
     real_text = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
-    file_list = os.listdir(dir)[:30]
+    file_list = os.listdir(dir)
     # file_list = ['BSH0046.JPG']
     for file_name in tqdm(file_list):
 
@@ -681,7 +681,7 @@ for dir, file_path in data_dict.items():
             # img = thr.kmeans(img, n_clusters=2, invert=False)
             # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-            light, dark = thr.kmeans2(img, n_clusters=5)
+            light, dark = thr.kmeans2(img, n_clusters=4)
             # img = thr.thresholding(img)
             # img = thr.OTSU(img)
 
@@ -697,6 +697,9 @@ for dir, file_path in data_dict.items():
                 lengths.append(len(ocr_out))
 
             img = light if lengths[0]>=lengths[1] else dark
+
+            # kernel = np.ones((3, 3), np.uint8)
+            # img = cv2.morphologyEx(img.astype(np.uint8), cv2.MORPH_ERODE, kernel)
 
             # img = dark
 
@@ -745,7 +748,7 @@ for dir, file_path in data_dict.items():
                 # print(bare_file_name)
                 # plt.imshow(img)
                 # print(real_out)
-                print(ocr_out)
+                # print(ocr_out)
 
 print(f'identified text in {len(identified)} out of {len(scores)}')
 print(f' 5 precentile is {np.percentile(scores,5)}')
@@ -764,7 +767,7 @@ for dir, file_path in data_dict.items():
 
     df = pd.read_excel(file_path)
     real_text = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
-    file_list = ['BSH0200.JPG']
+    file_list = ['BSH0323.JPG']
     for file_name in tqdm(file_list):
 
         bare_file_name = re.split(', |_|\.|\+', file_name)[0]
@@ -776,8 +779,9 @@ for dir, file_path in data_dict.items():
 
             img = cv2.imread(file_path)  # This is BGR
             # img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-
+            # img = imutils.rotate(img,angle = 20)
             # plt.imshow(img)
+            
             img = seg.crop(img, fraction=3)
 
             # plt.imshow(img)
@@ -792,23 +796,37 @@ for dir, file_path in data_dict.items():
             # img = thr.kmeans(img, n_clusters=5, invert=False)
             # plt.imshow(img)
 
-            # light, dark = thr.kmeans2(img, n_clusters=4)
+            light, dark = thr.kmeans2(img, n_clusters=4)
 
 
-            # lengths = []
-            # for new_img in [light, dark]:
-            #     new_img = cv2.cvtColor(new_img.astype(np.uint8)*255, cv2.COLOR_GRAY2RGB)
-            #     ocr_out = pytesseract.image_to_string(new_img, lang="heb", config=custom_config)
-            #     lengths.append(len(ocr_out))
+            lengths = {"dark":[],"light":[]}
+            new_img_rot_list = {"dark":[],"light":[]}
+            ocr_out_list = {"dark":[],"light":[]}
+            angle_list = np.linspace(-25,25,11)
+            for angle in angle_list:
+                print(angle)
+                for new_img,key in zip([light, dark],["light","dark"]):
+                    new_img = cv2.cvtColor(new_img.astype(np.uint8)*255, cv2.COLOR_GRAY2RGB)
+                    new_img_rot = imutils.rotate(new_img,angle = angle)
+                    # new_img_rot = cv2.cvtColor(new_img_rot.astype(np.uint8)*255, cv2.COLOR_GRAY2RGB)
+                    ocr_out = pytesseract.image_to_string(new_img_rot, lang="heb", config=custom_config)
+                    lengths[key].append(len(ocr_out.replace("\n","").replace("₪","")))
+                    new_img_rot_list[key].append(new_img_rot)
+                    ocr_out_list[key].append(ocr_out)
+            
+            key = "light" if np.sum(lengths["light"]) > np.sum(lengths["dark"]) else "dark"
+                
+            i = np.argmax(lengths[key])
+            
+            # new_angle = np.sum(angle_list * lengths[key]) / np.sum(lengths[key])
 
-            # img = light if lengths[0]>=lengths[1] else dark
+            # img = imutils.rotate(new_img_rot_list[key][len(angle_list)//2] , angle = new_angle)
 
-
+            img = new_img_rot_list[key][i]
+            ocr_out = ocr_out_list[key][i]
 
             # img = cv2.cvtColor(img.astype(np.uint8)*255, cv2.COLOR_GRAY2RGB)
 
-
-            # img2 = imutils.rotate(img,angle = 45)
 
             ocr_out = pytesseract.image_to_string(img, lang="heb", config=custom_config)
             # ocr_out = pytesseract.image_to_string(img)
@@ -839,3 +857,122 @@ for dir, file_path in data_dict.items():
                 print(score)
 
 # %%
+
+#-l Hebrew 
+custom_config = r'-c tessedit_char_blacklist=1234567890~!₪@#$%^&*()_-+=[]{}/\\|.<>?;:' \
+                    r' --psm 12'
+file_path = r"C:\dev\big_angle.jpg"
+img = cv2.imread(file_path)
+h, w, c = img.shape
+
+ocr_out = pytesseract.image_to_string(img, lang="heb", config=custom_config)
+boxes = pytesseract.image_to_boxes(img, lang="heb", config=custom_config)
+for b in boxes.splitlines():
+    b = b.split(' ')
+    img = cv2.rectangle(img, (int(b[1]), h - int(b[2])), (int(b[3]), h - int(b[4])), (0, 255, 0), 1)
+img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+plt.imshow(img)
+print(ocr_out)
+
+
+#%%
+
+# Test angles
+scores = []
+identified1 = []
+#-l Hebrew 
+custom_config = r'-c tessedit_char_blacklist=1234567890~!@#$%^&*₪()_-+=[]{}/\\|,.<>?;:' \
+                    r' --psm 12'
+
+for dir, file_path in data_dict.items():
+
+    df = pd.read_excel(file_path)
+    real_text = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
+    file_list = ['BSH0323.JPG']
+    for file_name in tqdm(file_list):
+
+        bare_file_name = re.split(', |_|\.|\+', file_name)[0]
+
+        if bare_file_name in real_text:
+            real_out = real_text[bare_file_name]
+            file_path = os.path.join(dir, file_name)
+            # print(file_path)
+
+            img = cv2.imread(file_path)  # This is BGR
+            # img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            # img = imutils.rotate(img,angle = 20)
+            # plt.imshow(img)
+            
+            img = seg.crop(img, fraction=3)
+
+            # plt.imshow(img)
+            img = enh.fastNlMeansDenoisingColored(img, h=5)
+            # img = enh.median(img,size=3)
+            img = enh.CLAHE(img)
+            # img = enh.median(img,size=3)
+            # img = enh.bilateral(img)
+            img = enh.fastNlMeansDenoisingColored(img, h=30)
+            # plt.imshow(img)
+            # img = thr.kmeans(img, n_clusters=4, invert=False)
+            # img = thr.kmeans(img, n_clusters=5, invert=False)
+            # plt.imshow(img)
+
+            light, dark = thr.kmeans2(img, n_clusters=4)
+
+
+            lengths = {"dark":[],"light":[]}
+            new_img_rot_list = {"dark":[],"light":[]}
+            ocr_out_list = {"dark":[],"light":[]}
+            angle_list = np.linspace(-25,25,11)
+            for angle in angle_list:
+                print(angle)
+                for new_img,key in zip([light, dark],["light","dark"]):
+                    new_img = cv2.cvtColor(new_img.astype(np.uint8)*255, cv2.COLOR_GRAY2RGB)
+                    new_img_rot = imutils.rotate(new_img,angle = angle)
+                    # new_img_rot = cv2.cvtColor(new_img_rot.astype(np.uint8)*255, cv2.COLOR_GRAY2RGB)
+                    ocr_out = pytesseract.image_to_string(new_img_rot, lang="heb", config=custom_config)
+                    lengths[key].append(len(ocr_out.replace("\n","").replace("₪","")))
+                    new_img_rot_list[key].append(new_img_rot)
+                    ocr_out_list[key].append(ocr_out)
+            
+            key = "light" if np.sum(lengths["light"]) > np.sum(lengths["dark"]) else "dark"
+                
+            i = np.argmax(lengths[key])
+            
+            # new_angle = np.sum(angle_list * lengths[key]) / np.sum(lengths[key])
+
+            # img = imutils.rotate(new_img_rot_list[key][len(angle_list)//2] , angle = new_angle)
+
+            img = new_img_rot_list[key][i]
+            # ocr_out = ocr_out_list[key][i]
+
+            # img = cv2.cvtColor(img.astype(np.uint8)*255, cv2.COLOR_GRAY2RGB)
+
+
+            ocr_out = pytesseract.image_to_string(img, lang="heb", config=custom_config)
+            # ocr_out = pytesseract.image_to_string(img)
+            # plt.imshow(img)
+            # print(ocr_out)
+            score = editdistance.eval(ocr_out, real_out) / \
+                max([len(real_out), len(ocr_out)])
+            scores.append(score)
+            if score<1.9:
+                # identified.append(bare_file_name)
+                print(bare_file_name)
+                
+
+                h, w, c = img.shape  # assumes color image
+                boxes = pytesseract.image_to_boxes(img, lang="heb", config=custom_config)
+                # boxes = pytesseract.image_to_boxes(img)
+                for b in boxes.splitlines():
+                    b = b.split(' ')
+                    img = cv2.rectangle(img, (int(b[1]), h - int(b[2])), (int(b[3]), h - int(b[4])), (0, 255, 0), 2)
+                img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+                
+                plt.imshow(img)
+                # cv2.imshow('img',img)
+                # cv2.waitKey(0)
+
+                print(real_out)
+                print(ocr_out)
+                print(score)
