@@ -49,7 +49,7 @@ print(ocr_out)
 
 
 #%%
-# Test on a few images
+# Test on a few specific images
 
 custom_config = r'-c tessedit_char_blacklist=1234567890~!@#$%^&*₪()_-+=[]{}/\\|,.<>?;:' \
                     r' --psm 12'
