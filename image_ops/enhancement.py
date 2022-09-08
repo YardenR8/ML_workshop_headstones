@@ -16,15 +16,9 @@ def CLAHE(img):
     l_channel = lab[:,:,0]
     a = lab[:,:,1]
     b = lab[:,:,2]
-     #Applying CLAHE to L-channel
-    # feel free to try different values for the limit and grid size:
     clahe = cv2.createCLAHE(clipLimit=100, tileGridSize=(5,5))
     cl = clahe.apply(l_channel)
-
-    # merge the CLAHE enhanced L-channel with the a and b channel
     limg = cv2.merge((cl,a,b))
-
-    # Converting image from LAB Color model to BGR color spcae
     enhanced_img = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
 
     return enhanced_img
